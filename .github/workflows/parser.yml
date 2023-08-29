@@ -1,0 +1,219 @@
+---
+name: Parser Issue Forms
+on:
+  issues:
+    types: [opened, edited]
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.10.8
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+
+    - name: Parse Issue Body
+      id: parse-issue
+      run: |
+        python3 - <<EOF
+        import os
+        import json
+        import re
+        import requests
+        import github3
+
+
+        # Load the issue body from the environment variable
+        def fetch_issue_body():
+            issue_body = os.getenv("ISSUE_BODY")
+            print("ISSUE", issue_body)
+            issue_body = issue_body.replace('\r\n', '\n').replace('\r', '\n')
+            return str(issue_body)
+
+
+        # Parse the issue body
+        def is_dropdown(value):
+            is_dropdown_regex = r"^([^,\n]+, )+[^,\n]+$"
+            return bool(re.match(is_dropdown_regex, value))
+
+
+        def parse_dropdown_value(value):
+            lines = value.split(",")
+            res = [line.strip() for line in lines]
+            return res
+
+
+        def is_checkbox(value):
+            is_checkbox_regex = r"^- \[[ X]\] "
+            return bool(re.match(is_checkbox_regex, value))
+
+
+        def parse_checkbox_value(value):
+            lines = value.split("\n")
+            res = []
+            for line in lines:
+                trimmed = line.strip()
+                match = re.match(r"^- \[([ Xx])\] (.+)$", trimmed)
+                if match and match.group(1).lower() == "x":
+                    res.append(match.group(2))
+            return res
+
+
+        def parse_text_input_value(value):
+            if not value:
+                return None
+            if is_dropdown(value):
+                return parse_dropdown_value(value)
+            if is_checkbox(value):
+                return parse_checkbox_value(value)
+            if "\n" in value:
+                # Handle comma-separated values with new lines
+                lines = value.split("\n")
+                return [line.strip() for line in lines if line.strip()]
+            elif ",\n" in value:
+                # Handle comma-separated values with new lines
+                lines = value.split(",\n")
+                return [line.strip() for line in lines if line.strip()]
+            elif ", " in value:
+                # Handle comma+space separated values
+                return [item.strip() for item in value.split(", ")]
+            elif "," in value:
+                # Handle comma-separated values
+                return [item.strip() for item in value.split(",")]
+            return value
+
+
+        def parse_issue_section(section):
+            trimmed = section.strip()
+        
+            split = trimmed.find("\n")
+        
+            if split == -1:
+                return {"name": trimmed, "value": None}
+        
+            name = trimmed[:split]
+            value = parse_text_input_value(trimmed[split + 2:].strip())
+            return {"name": name, "value": value}
+
+
+        def get_sections(body):
+            sections = [section.strip() for section in re.split(r'###', body) if section.strip()]
+            return sections
+
+
+        def parse_issue_body(body):
+            sections = get_sections(body)
+            print(f"Found {len(sections)} sections in the form.")
+        
+            res = {}
+            for section in map(parse_issue_section, sections):
+                res[section['name']] = section['value']
+        
+            print(f"Payload JSON: {json.dumps(res)}")
+            return res
+
+
+        def check_url(url):
+            TOKEN_SYS_CACTUSI_ARTIFACT = os.getenv("TOKEN_SYS_CACTUSI_ARTIFACT")
+            headers = {
+                "Authorization": f"Bearer {TOKEN_SYS_CACTUSI_ARTIFACT}"
+            }
+            try:
+                response = requests.head(url, headers=headers)
+                if response.status_code == 200 and ("PSI/weekly/" in url or "-mergerequest" in url):
+                    return True
+                return False
+            except requests.ConnectionError:
+                return False
+        
+        parsed_issue = parse_issue_body(fetch_issue_body())
+
+        # Append additional fields
+        parsed_issue["action"] = "custom-eng"
+        parsed_issue["repository"] = {"full_name": "empty"}
+
+        if "override_manifest" in parsed_issue:
+            current_value = parsed_issue["override_manifest"]
+            if not current_value.endswith("/"):
+                modified_value = current_value + "/"
+                parsed_issue["override_manifest"] = modified_value
+            if check_url(parsed_issue["override_manifest"]):
+                print("Valid Override Manifest URL")
+            else:
+                print("Invaild Override Manifest URL")
+                GITHUB_PAT = os.getenv("TOKEN_SYS_CACTUSI")
+                GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
+                ISSUE_NUMBER = os.getenv("ISSUE_NUMBER")  # Replace with the actual issue number
+                COMMENT_TEXT = "Provided override_manifest url is incorrect. Closing this issue.\nPlease run new build with correct input. "
+                print(f"ISSUE_NUMBER: {ISSUE_NUMBER}")
+                print(f"GITHUB_REPOSITORY: {GITHUB_REPOSITORY}")
+                url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{ISSUE_NUMBER}/comments"
+                print(url)
+                headers = {
+                    "Authorization": f"token {GITHUB_PAT}",
+                    "Accept": "application/vnd.github.v3+json"
+                }
+                data = {
+                    "body": COMMENT_TEXT
+                }
+
+                response = requests.post(url, headers=headers, json=data)
+                # response = requests.post(url, auth=(GITHUB_USERNAME, GITHUB_PASSWORD), json=data)
+                
+                
+                if response.status_code == 201:
+                    print("Comment added successfully.")
+                    exit(-1)
+                else:
+                    print(f"Failed to add comment. Status: {response.text}")
+                    exit(-1)
+
+        if "pull_request" in parsed_issue:
+            current_value = parsed_issue["pull_request"]
+            if not isinstance(current_value, list):
+                # Convert the value to a list
+                converted_value = [current_value]
+                parsed_issue["pull_request"] = converted_value
+                
+        with open('parsed_issue.json', 'w') as json_file:
+            json.dump(parsed_issue, json_file)
+        EOF
+      env:
+        TOKEN_SYS_CACTUSI: ${{ secrets.TOKEN_SYS_CACTUSI }}
+        TOKEN_SYS_CACTUSI_ARTIFACT: ${{ secrets.TOKEN_SYS_CACTUSI_ARTIFACT }}
+        ISSUE_BODY: ${{ github.event.issue.body }}
+        ISSUE_NUMBER: ${{ github.event.issue.number }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+
+        
+    - name: Access Parsed Output
+      run: |
+        parsed_output=$(cat parsed_issue.json)
+        echo "Parsed Output: $parsed_output"
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.TOKEN_SYS_CACTUSI }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/comments" \
+          -d "{\"body\": \"Inputs validated successfully\nTriggering Custom Engineering Build\"}"
+
+
+    - name: TriggerBuild with Event
+      run: |-
+            parsed_output=$(cat parsed_issue.json)
+            curl --location --request POST  'https://api-gw.dart.intel.com:32462/eventpublisher/api/publish'  \
+                    --header 'Content-Type: application/json' \
+                    --header 'x-jenkins-event: jenkins' \
+                    --data-binary "@parsed_issue.json"
+
+                    
+    - name: Complete Workflow
+      run: echo "Workflow completed."
+
