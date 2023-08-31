@@ -2,7 +2,7 @@
 name: Parser Issue Forms
 on:
   issues:
-    types: [opened, edited]
+    types: [opened]
 jobs:
   build:
     runs-on: self-hosted
@@ -28,7 +28,6 @@ jobs:
         import json
         import re
         import requests
-        import github3
 
 
         # Load the issue body from the environment variable
@@ -155,7 +154,7 @@ jobs:
                 COMMENT_TEXT = "Provided override_manifest url is incorrect. Closing this issue.\nPlease run new build with correct input. "
                 print(f"ISSUE_NUMBER: {ISSUE_NUMBER}")
                 print(f"GITHUB_REPOSITORY: {GITHUB_REPOSITORY}")
-                url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{ISSUE_NUMBER}/comments"
+                url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{ISSUE_NUMBER}"
                 print(url)
                 headers = {
                     "Authorization": f"token {GITHUB_PAT}",
@@ -165,15 +164,23 @@ jobs:
                     "body": COMMENT_TEXT
                 }
 
-                response = requests.post(url, headers=headers, json=data)
-                # response = requests.post(url, auth=(GITHUB_USERNAME, GITHUB_PASSWORD), json=data)
-                
-                
-                if response.status_code == 201:
+                # Comment on the issue
+                comment_response = requests.post(url+"/comments", headers=headers, json=data)
+                if comment_response.status_code == 201:
                     print("Comment added successfully.")
-                    exit(-1)
                 else:
-                    print(f"Failed to add comment. Status: {response.text}")
+                    print(f"Failed to add comment. Status: {comment_response.text}")
+                    exit(-1)
+
+                # Close the issue
+                close_payload = {
+                    "state": "closed"
+                }
+                close_response = requests.patch(url, json=close_payload, headers=headers)
+                if close_response.status_code == 200:
+                    print("Issue closed successfully.")
+                else:
+                    print(f"Failed to close issue. Status: {close_response.text}")
                     exit(-1)
 
         if "pull_request" in parsed_issue:
