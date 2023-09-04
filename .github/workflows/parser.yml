@@ -138,6 +138,7 @@ jobs:
         # Append additional fields
         parsed_issue["action"] = "custom-eng"
         parsed_issue["repository"] = {"full_name": "empty"}
+        parsed_issue["issue_number"] = os.getenv("ISSUE_NUMBER")
 
         if "override_manifest" in parsed_issue:
             current_value = parsed_issue["override_manifest"]
@@ -150,7 +151,7 @@ jobs:
                 print("Invaild Override Manifest URL")
                 GITHUB_PAT = os.getenv("TOKEN_SYS_CACTUSI")
                 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
-                ISSUE_NUMBER = os.getenv("ISSUE_NUMBER")  # Replace with the actual issue number
+                ISSUE_NUMBER = os.getenv("ISSUE_NUMBER")
                 COMMENT_TEXT = "Provided override_manifest url is incorrect. Closing this issue.\nPlease run new build with correct input. "
                 print(f"ISSUE_NUMBER: {ISSUE_NUMBER}")
                 print(f"GITHUB_REPOSITORY: {GITHUB_REPOSITORY}")
@@ -202,14 +203,17 @@ jobs:
 
         
     - name: Access Parsed Output
+      env:
+        TOKEN_SYS_CACTUSI: ${{ secrets.TOKEN_SYS_CACTUSI }}
+        COMMENT_TEXT: "Inputs validated successfully\\nTriggering Custom Engineering Build"
       run: |
         parsed_output=$(cat parsed_issue.json)
         echo "Parsed Output: $parsed_output"
         curl -X POST \
-          -H "Authorization: token ${{ secrets.TOKEN_SYS_CACTUSI }}" \
+          -H "Authorization: token $TOKEN_SYS_CACTUSI" \
           -H "Accept: application/vnd.github.v3+json" \
           "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/comments" \
-          -d "{\"body\": \"Inputs validated successfully\nTriggering Custom Engineering Build\"}"
+          -d "{\"body\": \"$COMMENT_TEXT\"}"
 
 
     - name: TriggerBuild with Event
