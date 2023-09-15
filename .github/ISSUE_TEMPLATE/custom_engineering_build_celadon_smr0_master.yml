@@ -1,4 +1,4 @@
-name: "Custom Engineering Build Celadon"
+name: "Custom Engineering Build celadon_smr0_master"
 description: "Custom Engineering Build for Android CI"
 title: '[Custom Engineering Build] '
 
@@ -6,7 +6,7 @@ body:
 - type: markdown
   attributes:
     value: |
-      Fill out the following fields for Custom Engineering Build - Celadon
+      Fill out the following fields for Custom Engineering Build - celadon_smr0_master
           - Pull Request field should not be empty.
           - At least one Build Target and one Build Variant should be selected.
     
@@ -14,7 +14,7 @@ body:
   id: program
   attributes:
     label: program
-    value: celadon
+    value: celadon_smr0_master
   validations:
     required: true
 
@@ -42,8 +42,8 @@ body:
     label: build_targets
     description: Choose required Build Target.
     options:
-      - label: caas
-      - label: r2_caas
+      - label: celadon_ivi
+      - label: r2_celadon_ivi
 
 - type: checkboxes
   id: variants
@@ -54,4 +54,3 @@ body:
       - label: eng
       - label: user
       - label: user_debug
-

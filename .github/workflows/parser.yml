@@ -4,7 +4,7 @@ on:
   issues:
     types: [opened]
 jobs:
-  build:
+  Validate:
     runs-on: self-hosted
     steps:
     - name: Checkout Repository
@@ -77,6 +77,10 @@ jobs:
                 # Handle comma-separated values with new lines
                 lines = value.split("\n")
                 return [line.strip() for line in lines if line.strip()]
+            elif " \n" in value:
+                # Handle comma-separated values with new lines
+                lines = value.split(",\n")
+                return [line.strip() for line in lines if line.strip()]
             elif ",\n" in value:
                 # Handle comma-separated values with new lines
                 lines = value.split(",\n")
@@ -87,7 +91,7 @@ jobs:
             elif "," in value:
                 # Handle comma-separated values
                 return [item.strip() for item in value.split(",")]
-            return value
+            return value.strip()
 
 
         def parse_issue_section(section):
@@ -120,6 +124,40 @@ jobs:
             return res
 
 
+        def comment_on_issue(comment_body):
+            GITHUB_PAT = os.getenv("TOKEN_SYS_CACTUSI")
+            GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
+            ISSUE_NUMBER = os.getenv("ISSUE_NUMBER")
+            print(f"ISSUE_NUMBER: {ISSUE_NUMBER}")
+            print(f"GITHUB_REPOSITORY: {GITHUB_REPOSITORY}")
+            url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{ISSUE_NUMBER}"
+            print(url)
+            headers = {
+                "Authorization": f"token {GITHUB_PAT}",
+                "Accept": "application/vnd.github.v3+json"
+            }
+            data = {
+                "body": comment_body
+            }
+            # Comment on the issue
+            comment_response = requests.post(url+"/comments", headers=headers, json=data)
+            if comment_response.status_code == 201:
+                print("Comment added successfully.")
+            else:
+                print(f"Failed to add comment. Status: {comment_response.text}")
+                exit(-1)
+            # Close the issue
+            close_payload = {
+                "state": "closed"
+            }
+            close_response = requests.patch(url, json=close_payload, headers=headers)
+            if close_response.status_code == 200:
+                print("Issue closed successfully.")
+            else:
+                print(f"Failed to close issue. Status: {close_response.text}")
+                exit(-1)
+
+
         def check_url(url):
             TOKEN_SYS_CACTUSI_ARTIFACT = os.getenv("TOKEN_SYS_CACTUSI_ARTIFACT")
             headers = {
@@ -141,7 +179,7 @@ jobs:
         parsed_issue["issue_number"] = os.getenv("ISSUE_NUMBER")
         parsed_issue["project"] = os.getenv("GITHUB_REPOSITORY")
 
-        if "override_manifest" in parsed_issue:
+        if "override_manifest" in parsed_issue and parsed_issue["override_manifest"] != "_No response_":
             current_value = parsed_issue["override_manifest"]
             if not current_value.endswith("/"):
                 modified_value = current_value + "/"
@@ -150,48 +188,27 @@ jobs:
                 print("Valid Override Manifest URL")
             else:
                 print("Invaild Override Manifest URL")
-                GITHUB_PAT = os.getenv("TOKEN_SYS_CACTUSI")
-                GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
-                ISSUE_NUMBER = os.getenv("ISSUE_NUMBER")
-                COMMENT_TEXT = "Provided override_manifest url is incorrect. Closing this issue.\nPlease run new build with correct input. "
-                print(f"ISSUE_NUMBER: {ISSUE_NUMBER}")
-                print(f"GITHUB_REPOSITORY: {GITHUB_REPOSITORY}")
-                url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/issues/{ISSUE_NUMBER}"
-                print(url)
-                headers = {
-                    "Authorization": f"token {GITHUB_PAT}",
-                    "Accept": "application/vnd.github.v3+json"
-                }
-                data = {
-                    "body": COMMENT_TEXT
-                }
+                comment = "Provided override_manifest url is incorrect. Closing this issue.\nPlease run new build with correct input. "
+                comment_on_issue(comment)
 
-                # Comment on the issue
-                comment_response = requests.post(url+"/comments", headers=headers, json=data)
-                if comment_response.status_code == 201:
-                    print("Comment added successfully.")
-                else:
-                    print(f"Failed to add comment. Status: {comment_response.text}")
-                    exit(-1)
 
-                # Close the issue
-                close_payload = {
-                    "state": "closed"
-                }
-                close_response = requests.patch(url, json=close_payload, headers=headers)
-                if close_response.status_code == 200:
-                    print("Issue closed successfully.")
-                else:
-                    print(f"Failed to close issue. Status: {close_response.text}")
-                    exit(-1)
-
-        if "pull_request" in parsed_issue:
+        if "pull_request" in parsed_issue and parsed_issue["pull_request"] != "_No response_":
             current_value = parsed_issue["pull_request"]
             if not isinstance(current_value, list):
                 # Convert the value to a list
                 converted_value = [current_value]
                 parsed_issue["pull_request"] = converted_value
+
+        else:
+            print("Pull Request URL should not be empty.")
+            comment = "Pull Request URL should not be empty. Closing this issue.\nPlease run new build with correct input. "
+            comment_on_issue(comment)
                 
+        if parsed_issue["build_targets"] == [] and parsed_issue["build_variants"] == []:
+            print("Atleast one Build Target and one Build Variants should be selected.")
+            comment = "Atleast one Build Target and one Build Variants should be selected. Closing this issue.\nPlease run new build with correct input. "
+            comment_on_issue(comment)
+
         with open('parsed_issue.json', 'w') as json_file:
             json.dump(parsed_issue, json_file)
         EOF
@@ -227,4 +244,3 @@ jobs:
                     
     - name: Complete Workflow
       run: echo "Workflow completed."
-
