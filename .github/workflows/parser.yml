@@ -176,7 +176,7 @@ jobs:
         # Append additional fields
         parsed_issue["action"] = "custom-eng"
         parsed_issue["repository"] = {"full_name": "empty"}
-        parsed_issue["issue_number"] = os.getenv("ISSUE_NUMBER")
+        parsed_issue["issue_number"] = int(os.getenv("ISSUE_NUMBER"))
         parsed_issue["project"] = os.getenv("GITHUB_REPOSITORY")
 
         if "override_manifest" in parsed_issue and parsed_issue["override_manifest"] != "_No response_":
