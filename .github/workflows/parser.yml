@@ -153,6 +153,7 @@ jobs:
             close_response = requests.patch(url, json=close_payload, headers=headers)
             if close_response.status_code == 200:
                 print("Issue closed successfully.")
+                exit(-1)
             else:
                 print(f"Failed to close issue. Status: {close_response.text}")
                 exit(-1)
@@ -221,6 +222,7 @@ jobs:
 
         
     - name: Access Parsed Output
+      if: success()
       env:
         TOKEN_SYS_CACTUSI: ${{ secrets.TOKEN_SYS_CACTUSI }}
       run: |
@@ -234,6 +236,7 @@ jobs:
 
 
     - name: TriggerBuild with Event
+      if: success()
       run: |-
             parsed_output=$(cat parsed_issue.json)
             curl --location --request POST  'https://api-gw.dart.intel.com:32462/eventpublisher/api/publish'  \

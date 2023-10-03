@@ -53,5 +53,5 @@ body:
     options:
       - label: eng
       - label: user
-      - label: user_debug
+      - label: userdebug
 
