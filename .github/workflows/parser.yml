@@ -205,9 +205,9 @@ jobs:
             comment = "Pull Request URL should not be empty. Closing this issue.\nPlease run new build with correct input. "
             comment_on_issue(comment)
                 
-        if parsed_issue["build_targets"] == [] and parsed_issue["build_variants"] == []:
-            print("Atleast one Build Target and one Build Variants should be selected.")
-            comment = "Atleast one Build Target and one Build Variants should be selected. Closing this issue.\nPlease run new build with correct input. "
+        if parsed_issue["build_targets"] == [] or parsed_issue["build_variants"] == []:
+            print("At least one Build Target and one Build Variants should be selected.")
+            comment = "At least one Build Target and one Build Variants should be selected. Closing this issue.\nPlease run new build with correct input. "
             comment_on_issue(comment)
 
         with open('parsed_issue.json', 'w') as json_file:

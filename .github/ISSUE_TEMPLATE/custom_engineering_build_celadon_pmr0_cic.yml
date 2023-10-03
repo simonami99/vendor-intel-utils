@@ -1,6 +1,6 @@
 name: "Custom Engineering Build celadon_pmr0_cic"
 description: "Custom Engineering Build for Android CI"
-title: '[Custom Engineering Build] '
+title: '[Custom Engineering Build - celadon_pmr0_cic] '
 
 body:
 - type: markdown
