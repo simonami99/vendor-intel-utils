@@ -1,0 +1,54 @@
+name: "Custom Engineering Build celadon_tmr0_master"
+description: "Custom Engineering Build for Android CI"
+title: '[Custom Engineering Build - celadon_tmr0_master] '
+
+body:
+- type: markdown
+  attributes:
+    value: |
+      Fill out the following fields for Custom Engineering Build - celadon_smr0_master
+          - Pull Request field should not be empty.
+          - At least one Build Target and one Build Variant should be selected.
+    
+- type: input
+  id: program
+  attributes:
+    label: program
+    value: celadon_tmr0_master
+  validations:
+    required: true
+
+- type: input
+  id: override_manifest
+  attributes:
+    label: override_manifest
+    description: "Provide a manifest URL on which patches are applied.\nExample: https://ubit-artifactory-or.intel.com/artifactory/cactus-absp-or-local/celadon-mergerequest/3318"
+    placeholder: ex. 'https://ubit-artifactory-or.intel.com/artifactory/cactus-absp-or-local/celadon-mergerequest/3318'
+  validations:
+    required: true
+
+- type: textarea
+  id: prs
+  attributes:
+    label: pull_request
+    description: "Provide pull requests urls one by one with newline separated\nExample: https://github.com/projectceladon/vendor-intel-utils/pull/2019, https://github.com/projectceladon/vendor-intel-utils/pull/2018"
+    placeholder: ex. "https://github.com/projectceladon/vendor-intel-utils/pull/2019, https://github.com/projectceladon/vendor-intel-utils/pull/2018"
+  validations:
+    required: true
+
+- type: checkboxes
+  id: build_targets
+  attributes:
+    label: build_targets
+    description: Choose required Build Target.
+    options:
+      - label: caas
+      - label: r2_caas
+
+- type: checkboxes
+  id: variants
+  attributes:
+    label: build_variants
+    description: Choose required Build Variants.
+    options:
+      - label: userdebug

@@ -159,15 +159,17 @@ jobs:
                 exit(-1)
 
 
-        def check_url(url):
+        def check_url(url, program):
             TOKEN_SYS_CACTUSI_ARTIFACT = os.getenv("TOKEN_SYS_CACTUSI_ARTIFACT")
+            program_to_check = [program+"-mergerequest", program+"/"]
             headers = {
                 "Authorization": f"Bearer {TOKEN_SYS_CACTUSI_ARTIFACT}"
             }
             try:
                 response = requests.head(url, headers=headers)
                 if response.status_code == 200 and ("PSI/weekly/" in url or "-mergerequest" in url):
-                    return True
+                    if any(substring in url for substring in program_to_check):
+                        return True
                 return False
             except requests.ConnectionError:
                 return False
@@ -185,10 +187,10 @@ jobs:
             if not current_value.endswith("/"):
                 modified_value = current_value + "/"
                 parsed_issue["override_manifest"] = modified_value
-            if check_url(parsed_issue["override_manifest"]):
+            if check_url(parsed_issue["override_manifest"], parsed_issue["program"]):
                 print("Valid Override Manifest URL")
             else:
-                print("Invaild Override Manifest URL")
+                print("Invalid Override Manifest URL")
                 comment = "Provided override_manifest url is incorrect. Closing this issue.\nPlease run new build with correct input. "
                 comment_on_issue(comment)
 
@@ -205,7 +207,9 @@ jobs:
             comment = "Pull Request URL should not be empty. Closing this issue.\nPlease run new build with correct input. "
             comment_on_issue(comment)
                 
-        if parsed_issue["build_targets"] == [] or parsed_issue["build_variants"] == []:
+        if parsed_issue["build_targets"] != [] and parsed_issue["build_variants"] != []:
+            print("User selected Build Targets and Build Variants")
+        else:
             print("At least one Build Target and one Build Variants should be selected.")
             comment = "At least one Build Target and one Build Variants should be selected. Closing this issue.\nPlease run new build with correct input. "
             comment_on_issue(comment)
