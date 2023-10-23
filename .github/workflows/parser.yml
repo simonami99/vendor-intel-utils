@@ -202,10 +202,6 @@ jobs:
                 converted_value = [current_value]
                 parsed_issue["pull_request"] = converted_value
 
-        else:
-            print("Pull Request URL should not be empty.")
-            comment = "Pull Request URL should not be empty. Closing this issue.\nPlease run new build with correct input. "
-            comment_on_issue(comment)
                 
         if parsed_issue["build_targets"] != [] and parsed_issue["build_variants"] != []:
             print("User selected Build Targets and Build Variants")

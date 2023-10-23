@@ -43,7 +43,8 @@ body:
     description: Choose required Build Target.
     options:
       - label: caas
-      - label: r2_caas
+      - label: r2_caas_dev
+      - label: r2_celadon_ivi      
 
 - type: checkboxes
   id: variants
