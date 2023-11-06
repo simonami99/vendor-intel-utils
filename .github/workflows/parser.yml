@@ -161,13 +161,13 @@ jobs:
 
         def check_url(url, program):
             TOKEN_SYS_CACTUSI_ARTIFACT = os.getenv("TOKEN_SYS_CACTUSI_ARTIFACT")
-            program_to_check = [program+"-mergerequest", program+"/"]
+            program_to_check = ["/"+program+"-", "/"+program+"/"]
             headers = {
                 "Authorization": f"Bearer {TOKEN_SYS_CACTUSI_ARTIFACT}"
             }
             try:
                 response = requests.head(url, headers=headers)
-                if response.status_code == 200 and ("PSI/weekly/" in url or "-mergerequest" in url):
+                if response.status_code == 200 and ("psi/weekly/" in url or "one-ci/weekly" in url or "-merge" in url or "-release_candidate" in url or "-mergerequest" in url):
                     if any(substring in url for substring in program_to_check):
                         return True
                 return False
